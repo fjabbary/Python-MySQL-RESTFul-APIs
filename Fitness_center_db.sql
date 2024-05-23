@@ -6,8 +6,7 @@ CREATE TABLE Members (
     name VARCHAR(50) NOT NULL,
     email VARCHAR(50) UNIQUE,
     phone VARCHAR(16),
-    membership_start_date DATE NOT NULL,
-    membership_end_date DATE
+    membership_start DATE NOT NULL
 );
 
 -- Duration in minutes
@@ -16,5 +15,6 @@ CREATE TABLE Sessions (
     member_id INT,
     date DATE NOT NULL,
     duration INT,
+    session_type VARCHAR(50),
     FOREIGN KEY(member_id) REFERENCES Members(member_id) 
 );

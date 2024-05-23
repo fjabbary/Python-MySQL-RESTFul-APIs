@@ -130,7 +130,114 @@ def delete_member(id):
             cursor.close()
             conn.close()
 
+# =====================================================================================
+# ====================|| CRUD Operations for Sessions Table ||=========================
+# =====================================================================================
+class SessionSchema(ma.Schema):
+    member_id = fields.Int(required=True) 
+    date = fields.Date(required=True)
+    duration = fields.Int(required=True)
+    session_type = fields.String(required=True)
+    
+    class Meta:
+      fields = ('member_id', 'date', 'duration', 'session_type')
 
+session_schema = SessionSchema()      
+sessions_schema = SessionSchema(many=True)
+
+
+
+@app.route('/sessions', methods=['POST'])
+def schedule_session():
+    conn = get_db_connection()
+    if conn is None:
+      return jsonify({"error": "Database connection failed"}), 500
+    cursor = conn.cursor()
+    
+    session_data = session_schema.load(request.json)
+    member_id = session_data["member_id"]
+    date = session_data["date"]
+    duration = session_data["duration"]
+    session_type = session_data["session_type"]
+    
+    query = "INSERT INTO sessions(member_id, date, duration, session_type) VALUES(%s, %s, %s, %s)"
+    cursor.execute(query, (member_id, date, duration, session_type))
+    conn.commit()
+
+    conn.close()
+    cursor.close()    
+    
+    return jsonify({"Message": "New session was created"})
+    
+    
+    
+@app.route('/sessions', methods = ['GET'])
+def get_sessions():  
+   conn = get_db_connection()
+   cursor = conn.cursor(dictionary=True)
+   cursor.execute('SELECT * FROM sessions')
+   
+   sessions = cursor.fetchall()
+   print(sessions)
+   cursor.close()
+   conn.close()
+   
+   return sessions_schema.jsonify(sessions)
+
+
+
+
+@app.route("/sessions/<int:id>", methods=["PUT"]) 
+# id refers to session id
+def reschedule_session(id):
+    try: 
+        session_data = session_schema.load(request.json)
+    except ValidationError as e:
+        print(f"Error: {e}")
+        return jsonify(e.messages), 400
+    
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            return jsonify({"error": "Database connection failed"}), 500
+        cursor = conn.cursor()
+
+        member_id = session_data['member_id']
+        date = session_data["date"]
+        duration = session_data["duration"]
+        session_type = session_data["session_type"]
+
+        query = "UPDATE Sessions SET date = %s, duration = %s, session_type= %s WHERE member_id = %s AND session_id= %s"
+        updated_session = (date, duration, session_type, member_id, id)
+        cursor.execute(query, updated_session)
+        conn.commit()
+
+        return jsonify({"message": "Session details updated successfully"}), 200 
+
+    except Error as e:
+        print(f"Error: {e}")
+        return jsonify({"message": "Internal Server Error"}), 500 
+    
+    finally:
+        if conn and conn.is_connected():
+            cursor.close()
+            conn.close()
+
+
+@app.route('/sessions/<int:id>', methods=['GET'])
+# id refers to member id
+def get_member_all_sessions(id):
+   conn = get_db_connection()
+   cursor = conn.cursor(dictionary=True)
+   query = 'SELECT * FROM sessions WHERE member_id = %s'
+   cursor.execute(query, (id,))
+   
+   sessions = cursor.fetchall()
+   print(sessions)
+   cursor.close()
+   conn.close()
+   
+   return sessions_schema.jsonify(sessions)
 
 
 if __name__ == "__main__": #making sure only app.py can run the flask application
